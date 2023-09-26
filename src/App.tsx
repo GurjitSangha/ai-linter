@@ -1,16 +1,17 @@
 import { Editor, useMonaco } from '@monaco-editor/react';
-import { MarkerSeverity, editor } from 'monaco-editor';
 import OpenAI from 'openai';
 import { useEffect, useState } from 'react';
 import { useDebounce } from 'usehooks-ts';
+import fetchGPTResponse from './lib/fetchGPTResponse';
 import getSystemMessage from './lib/getSystemMessage';
+import parseGPTResponse from './lib/parseGPTResponse';
 
+const DEBOUNCE_WAIT = 1000;
 const apiKey = import.meta.env.VITE_OPENAI_KEY;
 const openai = new OpenAI({
   apiKey,
   dangerouslyAllowBrowser: true,
 });
-const DEBOUNCE_WAIT = 1000;
 
 function App() {
   const monaco = useMonaco();
@@ -27,60 +28,37 @@ function App() {
   }
 
   useEffect(() => {
+    // Set the typescript options to prevent JSX being underlined
+    monaco?.languages.typescript.typescriptDefaults.setCompilerOptions({
+      jsx: monaco.languages.typescript.JsxEmit.React,
+    });
+  }, [monaco]);
+
+  useEffect(() => {
     if (!debouncedValue || !debouncedRules) return;
 
     const fetchResponse = async () => {
       setResult('Fetching...');
-      try {
-        const response = await openai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            { role: 'system', content: getSystemMessage(debouncedRules) },
-            { role: 'user', content: debouncedValue },
-          ],
-        });
-        const responseMessageContent = response?.choices?.[0]?.message?.content;
-        if (responseMessageContent) {
-          setResult(responseMessageContent);
-        } else {
-          throw new Error('Unable to parse result');
-        }
-      } catch (error) {
-        console.error(error);
-        setResult('Error fetching GPT result');
-      }
+      const response = await fetchGPTResponse({
+        systemMsg: getSystemMessage(debouncedRules),
+        userMsg: debouncedValue,
+        openai,
+      });
+      setResult(response);
     };
     fetchResponse();
   }, [debouncedValue, debouncedRules]);
 
   useEffect(() => {
-    const addMarkers = () => {
-      if (!result || result.toLowerCase() === 'all rules passed') return;
-      const resultLines = result.split('\n');
-      // For each line
-      const markers: editor.IMarkerData[] = resultLines.map((line) => {
-        // Split by : to get line number and message
-        const [number, message] = line.split(':');
-        const parsedNumber = parseInt(number, 10);
-        // Return the marker data (using whole line for now)
-        return {
-          startLineNumber: parsedNumber || -1,
-          endLineNumber: parsedNumber || -1,
-          startColumn: 0, // TODO use start of line
-          endColumn: Infinity, // Will be trimmed to end of line
-          message: message?.trim(),
-          severity: MarkerSeverity.Error,
-        };
-      });
-      monaco?.editor.setModelMarkers(monaco.editor.getModels()[0], 'linter', markers);
-    };
-    addMarkers();
+    if (!result || result.toLowerCase() === 'all rules passed') return;
+    const parsedMarkers = parseGPTResponse(result);
+    monaco?.editor.setModelMarkers(monaco.editor.getModels()[0], 'linter', parsedMarkers);
   }, [result, monaco?.editor]);
 
   return (
     <div className="flex justify-center w-full p-4">
       <div className="w-full max-w-5xl flex justify-center flex-col gap-4">
-        <div className="border border-slate-300">
+        <div className="border rounded border-slate-300">
           <Editor
             height="70vh"
             defaultLanguage="typescript"
@@ -88,12 +66,12 @@ function App() {
             onChange={handleEditorChange}
           />
         </div>
-        <div className="flex justify-center w-full gap-2">
+        <div className="flex justify-center items-center w-full gap-2">
           <span>Rules:</span>
           <input
             type="textarea"
             placeholder="Add some rules here"
-            className="border rounded border-slate-300 px-1 w-full"
+            className="border rounded border-slate-300 p-1 w-full"
             onChange={(e) => setRules(e.target.value)}
           />
         </div>
