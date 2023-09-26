@@ -1,9 +1,9 @@
 import { Editor, useMonaco } from '@monaco-editor/react';
+import { MarkerSeverity, editor } from 'monaco-editor';
 import OpenAI from 'openai';
 import { useEffect, useState } from 'react';
 import { useDebounce } from 'usehooks-ts';
 import getSystemMessage from './lib/getSystemMessage';
-import { MarkerSeverity, editor } from 'monaco-editor';
 
 const apiKey = import.meta.env.VITE_OPENAI_KEY;
 const openai = new OpenAI({
@@ -27,13 +27,6 @@ function App() {
   }
 
   useEffect(() => {
-    // Set the typescript options to prevent JSX being underlined
-    monaco?.languages.typescript.typescriptDefaults.setCompilerOptions({
-      jsx: 2,
-    });
-  }, [monaco]);
-
-  useEffect(() => {
     if (!debouncedValue || !debouncedRules) return;
 
     const fetchResponse = async () => {
@@ -49,6 +42,8 @@ function App() {
         const responseMessageContent = response?.choices?.[0]?.message?.content;
         if (responseMessageContent) {
           setResult(responseMessageContent);
+        } else {
+          throw new Error('Unable to parse result');
         }
       } catch (error) {
         console.error(error);
@@ -66,11 +61,12 @@ function App() {
       const markers: editor.IMarkerData[] = resultLines.map((line) => {
         // Split by : to get line number and message
         const [number, message] = line.split(':');
+        const parsedNumber = parseInt(number, 10);
         // Return the marker data (using whole line for now)
         return {
-          startLineNumber: parseInt(number, 10) || -1,
-          endLineNumber: parseInt(number, 10) || -1,
-          startColumn: 0,
+          startLineNumber: parsedNumber || -1,
+          endLineNumber: parsedNumber || -1,
+          startColumn: 0, // TODO use start of line
           endColumn: Infinity, // Will be trimmed to end of line
           message: message?.trim(),
           severity: MarkerSeverity.Error,
