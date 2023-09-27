@@ -5,7 +5,7 @@ import { useDebounce } from 'usehooks-ts';
 import { codeExamples, ruleExamples } from './lib/examples';
 import fetchGPTResponse from './lib/fetchGPTResponse';
 import getSystemMessage from './lib/getSystemMessage';
-import parseGPTResponse from './lib/parseGPTResponse';
+import parseGPTResponse, { GPTResult } from './lib/parseGPTResponse';
 
 const DEBOUNCE_WAIT = 1000;
 const apiKey = import.meta.env.VITE_OPENAI_KEY;
@@ -20,7 +20,8 @@ function App() {
   const debouncedValue = useDebounce<string>(value, DEBOUNCE_WAIT);
   const [rules, setRules] = useState<string>('');
   const debouncedRules = useDebounce<string>(rules, DEBOUNCE_WAIT);
-  const [result, setResult] = useState<string>('');
+  const [result, setResult] = useState<Array<GPTResult>>([]);
+  const [isFetching, setIsFetching] = useState<boolean>(false);
 
   function handleEditorChange(value: string | undefined) {
     if (value) {
@@ -39,22 +40,26 @@ function App() {
     if (!debouncedValue || !debouncedRules) return;
 
     const fetchResponse = async () => {
-      setResult('Fetching...');
+      setIsFetching(true);
       const response = await fetchGPTResponse({
         systemMsg: getSystemMessage(debouncedRules),
         userMsg: debouncedValue,
         openai,
       });
-      setResult(response);
+      setResult(JSON.parse(response));
+      setIsFetching(false);
     };
     fetchResponse();
   }, [debouncedValue, debouncedRules]);
 
   useEffect(() => {
-    if (!result || result.toLowerCase() === 'all rules passed') return;
-    const parsedMarkers = parseGPTResponse(result);
-    monaco?.editor.setModelMarkers(monaco.editor.getModels()[0], 'linter', parsedMarkers);
-  }, [result, monaco?.editor]);
+    if (!result || isFetching) return;
+    // Parse the result
+    if (result.length > 0) {
+      const markers = parseGPTResponse(result);
+      monaco?.editor.setModelMarkers(monaco.editor.getModels()[0], 'linter', markers);
+    }
+  }, [result, monaco?.editor, isFetching]);
 
   const onSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const key = e.target.value;
@@ -96,7 +101,7 @@ function App() {
         </div>
         <div>
           <p>ChatGPT output:</p>
-          <p>{result}</p>
+          <p>{isFetching ? 'Fetching...' : `${result.length} error(s) found`}</p>
         </div>
       </div>
     </div>
