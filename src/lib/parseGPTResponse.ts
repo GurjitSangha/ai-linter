@@ -14,7 +14,7 @@ export default function (input: GPTResult[]) {
       endLineNumber: line.lineNumber || -1,
       startColumn: 0, // TODO use start of line
       endColumn: Infinity, // Will be trimmed to end of line
-      message: line.rule?.trim(),
+      message: line.suggestion?.trim(),
       severity: MarkerSeverity.Error,
     };
   });

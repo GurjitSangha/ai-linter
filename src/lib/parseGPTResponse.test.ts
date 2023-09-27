@@ -3,7 +3,18 @@ import parseGPTResponse from './parseGPTResponse';
 
 describe('parseGPTResponse', () => {
   it('should return an array of marker data for each failure', () => {
-    const input = '2: This line fails \n 6: This line also fails';
+    const input = [
+      {
+        lineNumber: 2,
+        suggestion: 'This line fails',
+        rule: '',
+      },
+      {
+        lineNumber: 6,
+        suggestion: 'This line also fails',
+        rule: '',
+      },
+    ];
     const expected = [
       {
         startLineNumber: 2,
