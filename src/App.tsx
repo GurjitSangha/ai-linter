@@ -2,6 +2,7 @@ import { Editor, useMonaco } from '@monaco-editor/react';
 import OpenAI from 'openai';
 import { useEffect, useState } from 'react';
 import { useDebounce } from 'usehooks-ts';
+import { codeExamples, ruleExamples } from './lib/examples';
 import fetchGPTResponse from './lib/fetchGPTResponse';
 import getSystemMessage from './lib/getSystemMessage';
 import parseGPTResponse from './lib/parseGPTResponse';
@@ -55,9 +56,26 @@ function App() {
     monaco?.editor.setModelMarkers(monaco.editor.getModels()[0], 'linter', parsedMarkers);
   }, [result, monaco?.editor]);
 
+  const onSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const key = e.target.value;
+    monaco?.editor.getModels()[0].setValue(codeExamples[key].trim());
+    setValue(codeExamples[key]);
+    setRules(ruleExamples[key]);
+  };
+
   return (
     <div className="flex justify-center w-full p-4">
       <div className="w-full max-w-5xl flex justify-center flex-col gap-4">
+        <div className="w-full flex items-center gap-2">
+          Enter your code and rules below, or select an example:
+          <select className="p-1 border rounded border-slate-300" onChange={onSelectChange}>
+            <option value="empty">Default</option>
+            <option value="reactClass">Class Component</option>
+            <option value="reactFunc">Functional Component</option>
+            <option value="list">Rendering Lists</option>
+            <option value="ticTacToe">Tic-Tac-Toe</option>
+          </select>
+        </div>
         <div className="border rounded border-slate-300">
           <Editor
             height="70vh"
@@ -72,6 +90,7 @@ function App() {
             type="textarea"
             placeholder="Add some rules here"
             className="border rounded border-slate-300 p-1 w-full"
+            value={rules}
             onChange={(e) => setRules(e.target.value)}
           />
         </div>
