@@ -41,10 +41,8 @@ function App() {
         _range,
         context
       ): languages.ProviderResult<languages.CodeActionList> {
-        let versionId = 0;
         return {
           actions: context.markers.map((error) => {
-            versionId += 1;
             return {
               title: 'Apply suggestion',
               diagnostics: [error],
@@ -58,7 +56,7 @@ function App() {
                       range: error,
                       text: error.message,
                     },
-                    versionId,
+                    versionId: model.getVersionId(),
                   },
                 ],
               },
