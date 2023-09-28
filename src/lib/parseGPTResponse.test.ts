@@ -5,13 +5,15 @@ describe('parseGPTResponse', () => {
   it('should return an array of marker data for each failure', () => {
     const input = [
       {
-        lineNumber: 2,
+        startLineNumber: 2,
+        endLineNumber: 2,
         suggestion: 'This line fails',
         rule: '',
       },
       {
-        lineNumber: 6,
-        suggestion: 'This line also fails',
+        startLineNumber: 6,
+        endLineNumber: 10,
+        suggestion: 'This block also fails',
         rule: '',
       },
     ];
@@ -26,10 +28,10 @@ describe('parseGPTResponse', () => {
       },
       {
         startLineNumber: 6,
-        endLineNumber: 6,
+        endLineNumber: 10,
         startColumn: 0,
         endColumn: Infinity,
-        message: 'This line also fails',
+        message: 'This block also fails',
         severity: 8, // MarkerSeverity.Error,
       },
     ];
